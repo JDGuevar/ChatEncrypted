@@ -61,7 +61,11 @@ public class Client {
                 System.out.println("Resposta del servidor: " + acknowledgment);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (e instanceof SocketException) {
+                System.err.println("Revivan el server!!!");
+            } else {
+                System.err.println("Error: " + e);
+            }
         }
     }
 }
