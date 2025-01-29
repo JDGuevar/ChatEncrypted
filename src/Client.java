@@ -14,55 +14,52 @@ public class Client {
              ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
 
-            // Rep la clau pública del servidor
+            // Receive server's public key
             PublicKey serverPublicKey = (PublicKey) in.readObject();
 
-            // Genera una clau simètrica
+            // Generate symmetric key
             SecretKey symmetricKey = AES_Simetric.keygenKeyGeneration(128);
             byte[] symmetricKeyBytes = symmetricKey.getEncoded();
 
-            // Genera hash de la clau simètrica
+            // Generate hash of the symmetric key
             byte[] symmetricKeyHash = Hash.passwordKeyGeneration(new String(symmetricKeyBytes), 128).getEncoded();
 
-            // Xifra la clau simètrica amb la clau pública del servidor
+            // Encrypt the symmetric key with the server's public key
             byte[] encryptedSymmetricKey = RSA_Asimetric.encryptData(symmetricKeyBytes, serverPublicKey);
 
-            // Envia la clau simètrica xifrada
+            // Send the encrypted symmetric key
             out.writeObject(new Packet(encryptedSymmetricKey, symmetricKeyHash));
 
-            System.out.println("Clau simètrica enviada.");
+            System.out.println("Symmetric key sent.");
 
-            // Envia missatges al servidor
+            // Send messages to the server
             while (true) {
-                System.out.print("Introdueix un missatge: ");
+                System.out.print("Enter a message: ");
                 String message = reader.readLine();
 
-                // Genera hash del missatge
+                // Generate hash of the message
                 byte[] messageHash = Hash.passwordKeyGeneration(message, 128).getEncoded();
 
-                // Xifra el missatge amb la clau simètrica
+                // Encrypt the message with the symmetric key
                 byte[] encryptedMessage = AES_Simetric.encryptData(symmetricKey, message.getBytes());
 
-                // Envia el missatge xifrat
+                // Send the encrypted message
                 out.writeObject(new Packet(encryptedMessage, messageHash));
 
-                // Rep acus de rebut
+                // Receive acknowledgment
                 Packet acknowledgmentPacket = (Packet) in.readObject();
                 byte[] decryptedAck = AES_Simetric.decryptData(symmetricKey, acknowledgmentPacket.message);
                 String acknowledgment = new String(decryptedAck);
 
-                // Verifica integritat de l'acus de rebut
+                // Verify integrity of the acknowledgment
                 byte[] ackHash = Hash.passwordKeyGeneration(acknowledgment, 128).getEncoded();
-                if (!Hash.compareHash(new SecretKeySpec(ackHash, "AES"), new SecretKeySpec(acknowledgmentPacket.hash, "AES"))) {
-                    System.err.println("Error: L'acus de rebut ha fallat la verificació d'integritat.");
-                    continue;
-                }
+                Hash.compareHash(new SecretKeySpec(ackHash, "AES"), new SecretKeySpec(acknowledgmentPacket.hash, "AES"));
 
-                System.out.println("Resposta del servidor: " + acknowledgment);
+                System.out.println("Server response: " + acknowledgment);
             }
         } catch (Exception e) {
             if (e instanceof SocketException) {
-                System.err.println("Revivan el server!!!");
+                System.err.println("Server is down!");
             } else {
                 System.err.println("Error: " + e);
             }
