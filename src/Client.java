@@ -32,6 +32,27 @@ public class Client {
 
             System.out.println("Symmetric key sent.");
 
+            // Create a thread to listen for messages from the server
+            new Thread(() -> {
+                try {
+                    while (true) {
+                        Packet receivedPacket = (Packet) in.readObject();
+                        byte[] decryptedData = AES_Simetric.decryptData(symmetricKey, receivedPacket.message);
+                        String message = new String(decryptedData);
+
+                        // Verify integrity of the message
+                        byte[] calculatedHash = Hash.passwordKeyGeneration(message, 128).getEncoded();
+                        if (Hash.compareHash(new SecretKeySpec(calculatedHash, "AES"), new SecretKeySpec(receivedPacket.hash, "AES"))) {
+                            System.out.println("Received: " + message);
+                        } else {
+                            System.err.println("Error: Message integrity check failed.");
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
             // Send messages to the server
             while (true) {
                 System.out.print("Enter a message: ");
@@ -45,17 +66,6 @@ public class Client {
 
                 // Send the encrypted message
                 out.writeObject(new Packet(encryptedMessage, messageHash));
-
-                // Receive acknowledgment
-                Packet acknowledgmentPacket = (Packet) in.readObject();
-                byte[] decryptedAck = AES_Simetric.decryptData(symmetricKey, acknowledgmentPacket.message);
-                String acknowledgment = new String(decryptedAck);
-
-                // Verify integrity of the acknowledgment
-                byte[] ackHash = Hash.passwordKeyGeneration(acknowledgment, 128).getEncoded();
-                Hash.compareHash(new SecretKeySpec(ackHash, "AES"), new SecretKeySpec(acknowledgmentPacket.hash, "AES"));
-
-                System.out.println("Server response: " + acknowledgment);
             }
         } catch (Exception e) {
             if (e instanceof SocketException) {

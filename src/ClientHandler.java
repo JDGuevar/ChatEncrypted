@@ -48,15 +48,15 @@ public class ClientHandler implements Runnable {
             // Listen for messages from the client
             while (true) {
                 Packet dataPacket = (Packet) in.readObject();
-
-                byte[] decryptData = AES_Simetric.decryptData(sharedKey, dataPacket.message);
-
-                String message = new String(decryptData);
+                byte[] decryptedData = AES_Simetric.decryptData(sharedKey, dataPacket.message);
+                String message = new String(decryptedData);
 
                 // Verify integrity of the message
                 byte[] calculatedMessageHash = Hash.passwordKeyGeneration(message, 128).getEncoded();
-
-                Hash.compareHash(new SecretKeySpec(calculatedMessageHash, "AES"), new SecretKeySpec(dataPacket.hash, "AES"));
+                if (!Hash.compareHash(new SecretKeySpec(calculatedMessageHash, "AES"), new SecretKeySpec(dataPacket.hash, "AES"))) {
+                    System.err.println("Error: Message integrity check failed.");
+                    continue;
+                }
 
                 // Broadcast message to all clients
                 broadcastMessage(message);
@@ -65,7 +65,6 @@ public class ClientHandler implements Runnable {
                 String acknowledgmentMessage = "Message received.";
                 byte[] acknowledgmentHash = Hash.passwordKeyGeneration(acknowledgmentMessage, 128).getEncoded();
                 byte[] acknowledgment = AES_Simetric.encryptData(sharedKey, acknowledgmentMessage.getBytes());
-
                 out.writeObject(new Packet(acknowledgment, acknowledgmentHash));
             }
         } catch (Exception e) {
@@ -80,7 +79,7 @@ public class ClientHandler implements Runnable {
             if (client != this) {
                 try {
                     byte[] encryptedMessage = AES_Simetric.encryptData(client.sharedKey, message.getBytes());
-                    byte[] hash = Hash.passwordKeyGeneration(new String(encryptedMessage), 128).getEncoded();
+                    byte[] hash = Hash.passwordKeyGeneration(message, 128).getEncoded();
                     client.out.writeObject(new Packet(encryptedMessage, hash));
                 } catch (Exception e) {
                     e.printStackTrace();
