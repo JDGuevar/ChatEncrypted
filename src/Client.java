@@ -42,8 +42,10 @@ public class Client {
 
                         // Verify integrity of the message
                         byte[] calculatedHash = Hash.passwordKeyGeneration(message, 128).getEncoded();
+                        
                         if (Hash.compareHash(new SecretKeySpec(calculatedHash, "AES"), new SecretKeySpec(receivedPacket.hash, "AES"))) {
-                            System.out.println("Received: " + message);
+                            System.out.println("\rReceived: " + message);
+                            //System.out.println("Enter a message: ");
                         } else {
                             System.err.println("Error: Message integrity check failed.");
                         }
@@ -53,9 +55,10 @@ public class Client {
                 }
             }).start();
 
+            System.out.print("Enter a message: ");
             // Send messages to the server
             while (true) {
-                System.out.print("Enter a message: ");
+                
                 String message = reader.readLine();
 
                 // Generate hash of the message
@@ -66,6 +69,7 @@ public class Client {
 
                 // Send the encrypted message
                 out.writeObject(new Packet(encryptedMessage, messageHash));
+                Thread.sleep(200);
             }
         } catch (Exception e) {
             if (e instanceof SocketException) {

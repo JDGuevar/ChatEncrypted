@@ -1,5 +1,3 @@
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -7,6 +5,8 @@ import java.net.Socket;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class ClientHandler implements Runnable {
     private Socket socket;
@@ -65,7 +65,7 @@ public class ClientHandler implements Runnable {
                 String acknowledgmentMessage = "Message received.";
                 byte[] acknowledgmentHash = Hash.passwordKeyGeneration(acknowledgmentMessage, 128).getEncoded();
                 byte[] acknowledgment = AES_Simetric.encryptData(sharedKey, acknowledgmentMessage.getBytes());
-                out.writeObject(new Packet(acknowledgment, acknowledgmentHash));
+                //out.writeObject(new Packet(acknowledgment, acknowledgmentHash));
             }
         } catch (Exception e) {
             System.out.println("A client has disconnected.");
