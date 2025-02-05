@@ -29,6 +29,9 @@ public class ClientHandler implements Runnable {
             PublicKey publicKey = keyPair.getPublic();
             PrivateKey privateKey = keyPair.getPrivate();
 
+            // Create certificate using keytool
+            createCertificate(publicKey);
+
             // Send public key to client
             out.writeObject(publicKey);
 
@@ -85,6 +88,16 @@ public class ClientHandler implements Runnable {
                     e.printStackTrace();
                 }
             }
+        }
+    }
+
+    private void createCertificate(PublicKey publicKey) {
+        try {
+            String command = "keytool -genkeypair -alias serverCert -keyalg RSA -keysize 2048 -validity 365 -keystore server.keystore -storepass password -keypass password -dname \"CN=Server, OU=IT, O=Company, L=City, S=State, C=Country\"";
+            Process process = Runtime.getRuntime().exec(command);
+            process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
