@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.security.PublicKey;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -14,8 +16,11 @@ public class Client {
              ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
 
-            // Receive server's public key
-            PublicKey serverPublicKey = (PublicKey) in.readObject();
+            // Receive server's certificate
+            byte[] certificateBytes = (byte[]) in.readObject();
+            CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+            X509Certificate certificate = (X509Certificate) certFactory.generateCertificate(new ByteArrayInputStream(certificateBytes));
+            PublicKey serverPublicKey = certificate.getPublicKey();
 
             // Generate symmetric key
             SecretKey symmetricKey = AES_Simetric.keygenKeyGeneration(128);
@@ -24,9 +29,11 @@ public class Client {
             // Generate hash of the symmetric key
             byte[] symmetricKeyHash = Hash.passwordKeyGeneration(new String(symmetricKeyBytes), 128).getEncoded();
 
+            System.out.println(new String(symmetricKeyHash));
             // Encrypt the symmetric key with the server's public key
             byte[] encryptedSymmetricKey = RSA_Asimetric.encryptData(symmetricKeyBytes, serverPublicKey);
 
+            System.out.println("Symmetric key: " + new String(encryptedSymmetricKey));
             // Send the encrypted symmetric key
             out.writeObject(new Packet(encryptedSymmetricKey, symmetricKeyHash));
 
@@ -45,11 +52,12 @@ public class Client {
                         
                         if (Hash.compareHash(new SecretKeySpec(calculatedHash, "AES"), new SecretKeySpec(receivedPacket.hash, "AES"))) {
                             System.out.println("\rReceived: " + message);
-                            //System.out.println("Enter a message: ");
                         } else {
                             System.err.println("Error: Message integrity check failed.");
                         }
                     }
+                } catch (EOFException e) {
+                    System.err.println("Connection closed by server.");
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -58,7 +66,6 @@ public class Client {
             System.out.print("Enter a message: ");
             // Send messages to the server
             while (true) {
-                
                 String message = reader.readLine();
 
                 // Generate hash of the message
@@ -71,12 +78,10 @@ public class Client {
                 out.writeObject(new Packet(encryptedMessage, messageHash));
                 Thread.sleep(200);
             }
+        } catch (SocketException e) {
+            System.err.println("Server is down!");
         } catch (Exception e) {
-            if (e instanceof SocketException) {
-                System.err.println("Server is down!");
-            } else {
-                System.err.println("Error: " + e);
-            }
+            System.err.println("Error: " + e);
         }
     }
 }
